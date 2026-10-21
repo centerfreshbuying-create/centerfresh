@@ -10,7 +10,7 @@ const DEPT_NAMES=Object.keys(DEPTS);
 const hue=d=>(DEPT_NAMES.indexOf(d)*37+70)%360;
 const EDIT_KEYS=['name','size','dept','sub','price','unit','img','emoji','sale','caseQty','caseP','dealN','dealT','pop','featured'];
 const BASE={};
-(window.CATALOG||[]).forEach(r=>{const dept=DEPT_NAMES[r[3]];BASE[r[0]]={id:r[0],name:r[1],size:r[2],dept,sub:r[4],img:'img/p/'+r[5]+'.webp',emoji:DEPTS[dept][0],unit:r[6]?'lb':'ea',
+(window.CATALOG||[]).forEach(r=>{const dept=DEPT_NAMES[r[3]];BASE[r[0]]={id:r[0],name:r[1],size:r[2],dept,sub:r[4],img:(window.CF_CONFIG?.imgBase||'')+'img/p/'+r[5]+'.webp',emoji:DEPTS[dept][0],unit:r[6]?'lb':'ea',
   price:null,sale:null,caseQty:null,caseP:null,dealN:null,dealT:null,pop:50,featured:/^nutmeg/i.test(r[1])}});
 const RECIPE_CATS=['Shabbos','Yom Tov','Breakfast','Soups','Salads','Meat','Chicken','Fish','Sides','Kugels','Desserts','Quick & Easy','Kids'];
 const RECIPE_PHOTOS={r1:'img/r/Vegetable-Chicken-Soup-ff57ce54c62e.webp',r3:'img/r/Beef-Brisket-in-Sweet-and-Sour-Sauce-e324751e749b.webp',r6:'img/r/Shakshuka-Recipe.-All-Variations.-Gluten-Free-520ccd88765c.webp',r7:'img/r/Speedy-Baked-Ziti-c4438ee06275.webp'};
