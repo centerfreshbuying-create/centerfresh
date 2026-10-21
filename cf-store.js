@@ -485,7 +485,7 @@ window.openLogin=function(msg,tab='in'){
   :tab==='up'?`<form onsubmit="return doRegister(event)"><div class="grid2"><div><label for="rf">First name</label><input id="rf" required autocomplete="given-name"></div><div><label for="rl">Last name</label><input id="rl" required autocomplete="family-name"></div></div>
    <label for="re">Email</label><input id="re" type="email" required autocomplete="email"><label for="rph">Cell phone</label><input id="rph" type="tel" required autocomplete="tel"><label for="rp">Password <span class="muted small">(8+ characters)</span></label><input id="rp" type="password" minlength="8" required autocomplete="new-password">
    <label class="check"><input type="checkbox" id="rsub" checked> Send me weekly specials</label><div class="err" id="rerr" role="alert"></div><button class="btn lime" type="submit" style="width:100%;margin-top:14px">Create account</button></form>`
-  :`<form onsubmit="return doForgot(event)"><p class="muted small">Enter your email and we’ll send you a link to choose a new password.</p><label for="fe">Email</label><input id="fe" type="email" required autocomplete="email"><div class="err" id="ferr" role="alert"></div><button class="btn lime" type="submit" style="width:100%;margin-top:14px">Send reset link</button><p style="text-align:center"><button type="button" class="linkbtn" onclick="openLogin()">Back to sign in</button></p></form>`}
+  :`<form onsubmit="return doForgot(event)"><p class="muted small">Enter your email and we’ll send you a link to choose a new password. Already have the email? <a href="javascript:pasteReset(false)">Paste the link here</a>.</p><label for="fe">Email</label><input id="fe" type="email" required autocomplete="email"><div class="err" id="ferr" role="alert"></div><button class="btn lime" type="submit" style="width:100%;margin-top:14px">Send reset link</button><p style="text-align:center"><button type="button" class="linkbtn" onclick="openLogin()">Back to sign in</button></p></form>`}
   ${tab!=='forgot'&&S.googleLogin?`<div style="text-align:center;margin-top:12px"><span class="muted small">or</span><button type="button" class="btn ghost" style="width:100%;margin-top:8px" onclick="googleIn()">Continue with Google</button></div>`:''}`);
   setTimeout(()=>$(tab==='up'?'rf':tab==='forgot'?'fe':'le')?.focus(),50)};
 const busy=(f,on,txt)=>{const b=f.querySelector('button[type=submit]');if(!b)return;b.disabled=on;if(txt)b.textContent=txt};
@@ -504,7 +504,17 @@ window.doRegister=async function(e){e.preventDefault();const f=e.target,em=$('re
 window.doForgot=async function(e){e.preventDefault();const f=e.target;busy(f,true,'Sending…');
   const {error}=await sbc.auth.resetPasswordForEmail($('fe').value.trim(),{redirectTo:location.origin+location.pathname});
   if(error){busy(f,false,'Send reset link');$('ferr').textContent='We couldn’t send the email right now. Please try again in a minute.';return false}
-  modal('<h2>Check your email</h2><p>If an account exists for that email, a link to reset your password is on its way.</p>');return false};
+  pasteReset(true);return false};
+window.pasteReset=function(sent){modal(`<h2>${sent?'Check your email':'Use your reset email'}</h2>${sent?'<p>If an account exists for that email, a reset email is on its way.</p>':''}
+   <p class="small"><b>Don’t click the link in the email.</b> Right-click the “Reset Password” link (on a phone: press and hold), choose <b>Copy link</b>, and paste it here:</p>
+   <form onsubmit="return doPasteReset(event)"><input id="rlink" required placeholder="Paste the link from the email" autocomplete="off"><div class="err" id="rlerr" role="alert"></div><button class="btn lime" type="submit" style="width:100%;margin-top:12px">Continue</button></form>`);setTimeout(()=>$('rlink')?.focus(),60)};
+window.doPasteReset=async function(e){e.preventDefault();const v=$('rlink').value.trim(),err=$('rlerr');let tok='',type='recovery';
+  try{const u=new URL(v);tok=u.searchParams.get('token')||u.searchParams.get('token_hash')||'';type=u.searchParams.get('type')||'recovery';
+    if(!tok&&u.hash.includes('access_token=')){const h=new URLSearchParams(u.hash.slice(1));const {error}=await sbc.auth.setSession({access_token:h.get('access_token'),refresh_token:h.get('refresh_token')});if(error)throw error;closeModal();showRecovery();return false}}catch(x){}
+  if(!tok){err.textContent='That doesn’t look like the link from the reset email. Copy the link itself, not the page you land on.';return false}
+  const {error}=await sbc.auth.verifyOtp({token_hash:tok,type:type==='magiclink'?'magiclink':'recovery'});
+  if(error){err.textContent=/expired|invalid/i.test(error.message)?'That link was already used or has expired. Click “Forgot password?” to get a new email, then paste the new link here without clicking it.':error.message;return false}
+  closeModal();showRecovery();return false};
 window.googleIn=async function(){const {error}=await sbc.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}});if(error)toast('Google sign-in isn’t set up yet.')};
 window.logout=async function(){await CF.flushNow().catch(()=>{});await sbc.auth.signOut();location.hash='#/';location.reload()};
 window.accPw=async function(e){e.preventDefault();const p1=$('p1').value,p2=$('p2').value;if(p1!==p2){$('perr').textContent='New passwords don’t match.';return false}if(p1.length<8){$('perr').textContent='Use at least 8 characters.';return false}

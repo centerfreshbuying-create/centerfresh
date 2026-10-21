@@ -3,7 +3,7 @@ window.CF_CONFIG={
   url:'https://vqwhjyoosfiyfzcjzyxn.supabase.co',
   key:'sb_publishable_BrKIQH_gWzIlKPriXQD_zA_WpkJ63S9',   // public key — safe to ship; row security protects the data
   ownerEmail:'centerfreshbuying@gmail.com',
-  version:'2.2.1'
+  version:'2.2.2'
 };
 (async function(){
   const v='?v='+window.CF_CONFIG.version;
