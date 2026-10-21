@@ -502,19 +502,26 @@ window.doRegister=async function(e){e.preventDefault();const f=e.target,em=$('re
   if(data.session){location.reload();return false}
   modal(`<h2>Check your email</h2><p>We sent a confirmation link to <b>${esc(em)}</b>. Open it to finish creating your account, then sign in.</p><button class="btn lime" onclick="openLogin()">Back to sign in</button>`);return false};
 window.doForgot=async function(e){e.preventDefault();const f=e.target;busy(f,true,'Sending…');
-  const {error}=await sbc.auth.resetPasswordForEmail($('fe').value.trim(),{redirectTo:location.origin+location.pathname});
+  CF.lastResetEmail=$('fe').value.trim();const {error}=await sbc.auth.resetPasswordForEmail($('fe').value.trim(),{redirectTo:location.origin+location.pathname});
   if(error){busy(f,false,'Send reset link');$('ferr').textContent='We couldn’t send the email right now. Please try again in a minute.';return false}
   pasteReset(true);return false};
 window.pasteReset=function(sent){modal(`<h2>${sent?'Check your email':'Use your reset email'}</h2>${sent?'<p>If an account exists for that email, a reset email is on its way.</p>':''}
    <p class="small"><b>Don’t click the link in the email.</b> Right-click the “Reset Password” link (on a phone: press and hold), choose <b>Copy link</b>, and paste it here:</p>
-   <form onsubmit="return doPasteReset(event)"><input id="rlink" required placeholder="Paste the link from the email" autocomplete="off"><div class="err" id="rlerr" role="alert"></div><button class="btn lime" type="submit" style="width:100%;margin-top:12px">Continue</button></form>`);setTimeout(()=>$('rlink')?.focus(),60)};
-window.doPasteReset=async function(e){e.preventDefault();const v=$('rlink').value.trim(),err=$('rlerr');let tok='',type='recovery';
-  try{const u=new URL(v);tok=u.searchParams.get('token')||u.searchParams.get('token_hash')||'';type=u.searchParams.get('type')||'recovery';
-    if(!tok&&u.hash.includes('access_token=')){const h=new URLSearchParams(u.hash.slice(1));const {error}=await sbc.auth.setSession({access_token:h.get('access_token'),refresh_token:h.get('refresh_token')});if(error)throw error;closeModal();showRecovery();return false}}catch(x){}
-  if(!tok){err.textContent='That doesn’t look like the link from the reset email. Copy the link itself, not the page you land on.';return false}
-  const {error}=await sbc.auth.verifyOtp({token_hash:tok,type:type==='magiclink'?'magiclink':'recovery'});
-  if(error){err.textContent=/expired|invalid/i.test(error.message)?'That link was already used or has expired. Click “Forgot password?” to get a new email, then paste the new link here without clicking it.':error.message;return false}
+   <form onsubmit="return doPasteReset(event)"><input id="rlink" type="text" name="reset-link-paste" required placeholder="Paste the link from the email here" autocomplete="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-form-type="other"><div class="err" id="rlerr" role="alert"></div><button class="btn lime" type="submit" style="width:100%;margin-top:12px">Continue</button><p class="small" style="margin:12px 0 0;text-align:center"><a href="javascript:resendReset()" id="rlnew">Send a new email</a></p></form>`);setTimeout(()=>{const i=$('rlink');if(i){i.value='';i.focus()}},120)};
+window.doPasteReset=async function(e){e.preventDefault();const err=$('rlerr');let v=$('rlink').value.trim();
+  // unwrap links that Gmail/Outlook rewrite (google.com/url?q=…, safelinks…) and decode
+  for(let i=0;i<4;i++){try{const d=decodeURIComponent(v);if(d===v)break;v=d}catch(x){break}}
+  const grab=k=>{const m=v.match(new RegExp('[?&#]'+k+'=([^&#\\s]+)'));return m?m[1]:''};
+  const at=grab('access_token'),rt=grab('refresh_token'),tok=grab('token_hash')||grab('token'),typ=grab('type')||'recovery',ec=grab('error_code');
+  if(!at&&!tok){err.textContent=ec?'That link was already used or has expired. Click “Send a new email” below, then copy the new link WITHOUT clicking it.':'Paste the link from the email here (it starts with https://vqwhjyoosfiyfzcjzyxn.supabase.co/auth/v1/verify…), not your email address.';$('rlnew')?.removeAttribute('hidden');return false}
+  const btn=e.target.querySelector('button[type=submit]');if(btn){btn.disabled=true;btn.textContent='Checking…'}
+  let r;
+  if(at)r=await sbc.auth.setSession({access_token:at,refresh_token:rt||at});
+  else r=await sbc.auth.verifyOtp({token_hash:tok,type:typ==='magiclink'?'magiclink':typ==='signup'?'signup':'recovery'});
+  if(r.error){if(btn){btn.disabled=false;btn.textContent='Continue'}err.textContent=/expired|invalid|not found|jwt/i.test(r.error.message)?'That link was already used or has expired. Click “Send a new email” below, then copy the new link WITHOUT clicking it.':r.error.message;$('rlnew')?.removeAttribute('hidden');return false}
   closeModal();showRecovery();return false};
+window.resendReset=async function(){const em=(CF.lastResetEmail||'').trim()||prompt('Your email');if(!em)return;CF.lastResetEmail=em;
+  const {error}=await sbc.auth.resetPasswordForEmail(em,{redirectTo:location.origin+location.pathname});toast(error?'Couldn’t send — wait a minute and try again':'New email sent — copy the link from the NEWEST email');};
 window.googleIn=async function(){const {error}=await sbc.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}});if(error)toast('Google sign-in isn’t set up yet.')};
 window.logout=async function(){await CF.flushNow().catch(()=>{});await sbc.auth.signOut();location.hash='#/';location.reload()};
 window.accPw=async function(e){e.preventDefault();const p1=$('p1').value,p2=$('p2').value;if(p1!==p2){$('perr').textContent='New passwords don’t match.';return false}if(p1.length<8){$('perr').textContent='Use at least 8 characters.';return false}
